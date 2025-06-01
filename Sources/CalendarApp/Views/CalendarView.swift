@@ -7,12 +7,14 @@ import SwiftUI
 struct CalendarView: View {
     @StateObject private var calendarModel = CalendarModel()
     @StateObject private var recordManager = DayRecordManager()
+    @StateObject private var cloudKitManager = CloudKitManager.shared
     
     // 星期标题
     private let weekdays = ["一", "二", "三", "四", "五", "六", "日"]
     
     // 状态变量，用于触发视图刷新
     @State private var refreshID = UUID()
+    @State private var showingSettings = false
     
     var body: some View {
         ZStack {
@@ -50,6 +52,9 @@ struct CalendarView: View {
                 EditView(date: date, isPresented: $calendarModel.showingEditView)
             }
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(isPresented: $showingSettings)
+        }
         .onAppear {
             // 添加通知监听
             setupNotifications()
@@ -81,6 +86,21 @@ struct CalendarView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
+            // 设置按钮
+            Button(action: {
+                showingSettings = true
+            }) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.1))
+                    .clipShape(Circle())
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("设置")
+            
             Spacer()
             
             // 中间标题
@@ -92,6 +112,34 @@ struct CalendarView: View {
             
             // 右侧按钮组
             HStack(spacing: 12) {
+                // iCloud状态指示器
+                HStack(spacing: 4) {
+                    if cloudKitManager.isSyncing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: cloudKitManager.isAvailable && cloudKitManager.isSignedIn ? "icloud" : "icloud.slash")
+                            .font(.system(size: 16))
+                            .foregroundColor(cloudKitManager.isAvailable ? (cloudKitManager.isSignedIn ? .white : .red) : .orange)
+                    }
+                    
+                    if cloudKitManager.syncError != nil {
+                        Text("!")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.red)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .background(Color.white.opacity(0.1))
+                .clipShape(Circle())
+                .help(iCloudStatusText)
+                .onTapGesture {
+                    if cloudKitManager.isAvailable && cloudKitManager.isSignedIn && !cloudKitManager.isSyncing {
+                        recordManager.syncWithiCloud()
+                    }
+                }
+                
                 // 快速添加今日记录按钮
                 Button(action: {
                     calendarModel.selectDate(Date())
@@ -286,6 +334,28 @@ struct DayCell: View {
             return String(content[..<index]) + "..."
         }
         return content
+    }
+}
+
+// MARK: - 扩展视图
+extension CalendarView {
+    private var iCloudStatusText: String {
+        if cloudKitManager.isSyncing {
+            return "正在同步..."
+        } else if let error = cloudKitManager.syncError {
+            return error
+        } else if !cloudKitManager.isAvailable {
+            return "iCloud服务暂不可用"
+        } else if cloudKitManager.isSignedIn {
+            if let lastSync = cloudKitManager.lastSyncDate {
+                let formatter = RelativeDateTimeFormatter()
+                formatter.locale = Locale(identifier: "zh_CN")
+                return "上次同步: \(formatter.localizedString(for: lastSync, relativeTo: Date()))"
+            }
+            return "点击同步iCloud"
+        } else {
+            return "未登录iCloud"
+        }
     }
 }
 
