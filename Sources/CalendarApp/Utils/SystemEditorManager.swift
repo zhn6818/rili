@@ -54,8 +54,9 @@ class SystemEditorManager {
         
         // 获取记录内容
         var content = ""
-        if let record = recordManager.getRecord(for: date) {
-            content = record.content
+        if let dayRecord = recordManager.getRecord(for: date) {
+            // 将所有记录的内容合并显示
+            content = dayRecord.records.map { $0.content }.joined(separator: "\n\n")
         }
         
         // 写入文件

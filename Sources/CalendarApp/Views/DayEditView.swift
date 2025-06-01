@@ -122,8 +122,9 @@ struct DayEditView: View {
     // MARK: - 私有方法
     
     private func loadContent() {
-        if let record = recordManager.getRecord(for: date) {
-            content = record.content
+        if let dayRecord = recordManager.getRecord(for: date) {
+            // 将所有记录的内容合并显示
+            content = dayRecord.records.map { $0.content }.joined(separator: "\n\n")
             print("已加载记录内容: \(content)")
         } else {
             content = ""

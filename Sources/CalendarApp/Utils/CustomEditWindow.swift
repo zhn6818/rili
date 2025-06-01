@@ -171,8 +171,10 @@ class CustomEditWindow: NSObject {
         textView.isAutomaticSpellingCorrectionEnabled = false
         
         // 如果有记录，加载内容
-        if let record = recordManager.getRecord(for: date) {
-            textView.string = record.content
+        if let dayRecord = recordManager.getRecord(for: date) {
+            // 将所有记录的内容合并显示
+            let allContent = dayRecord.records.map { $0.content }.joined(separator: "\n\n")
+            textView.string = allContent
         }
         
         scrollView.documentView = textView

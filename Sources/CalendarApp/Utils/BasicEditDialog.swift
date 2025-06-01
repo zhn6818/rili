@@ -45,8 +45,10 @@ class BasicEditDialog {
             }
             
             // 如果有记录，加载内容
-            if let record = self.recordManager.getRecord(for: date) {
-                textField.string = record.content
+            if let dayRecord = self.recordManager.getRecord(for: date) {
+                // 将所有记录的内容合并显示
+                let allContent = dayRecord.records.map { $0.content }.joined(separator: "\n\n")
+                textField.string = allContent
             }
             
             // 创建滚动视图

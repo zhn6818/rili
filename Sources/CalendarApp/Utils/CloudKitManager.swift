@@ -141,9 +141,16 @@ class CloudKitManager: ObservableObject {
         )
         let record = CKRecord(recordType: recordType, recordID: recordID)
         
-        // 设置字段
+        // 设置字段 - 将records数组序列化为JSON
         record["date"] = dayRecord.date as CKRecordValue
-        record["content"] = dayRecord.content as CKRecordValue
+        do {
+            let recordsData = try JSONEncoder().encode(dayRecord.records)
+            record["recordsData"] = recordsData as CKRecordValue
+        } catch {
+            print("序列化records失败: \(error)")
+            completion(.failure(error))
+            return
+        }
         record["createdAt"] = dayRecord.createdAt as CKRecordValue
         record["updatedAt"] = dayRecord.updatedAt as CKRecordValue
         
@@ -261,7 +268,7 @@ class CloudKitManager: ObservableObject {
      */
     private func recordToDayRecord(_ record: CKRecord) -> DayRecord? {
         guard let date = record["date"] as? Date,
-              let content = record["content"] as? String,
+              let recordsData = record["recordsData"] as? Data,
               let createdAt = record["createdAt"] as? Date,
               let updatedAt = record["updatedAt"] as? Date else {
             return nil
@@ -269,12 +276,18 @@ class CloudKitManager: ObservableObject {
         
         let id = UUID(uuidString: record.recordID.recordName) ?? UUID()
         
-        var dayRecord = DayRecord(date: date, content: content)
-        dayRecord.id = id
-        dayRecord.createdAt = createdAt
-        dayRecord.updatedAt = updatedAt
-        
-        return dayRecord
+        do {
+            let records = try JSONDecoder().decode([RecordItem].self, from: recordsData)
+            var dayRecord = DayRecord(date: date)
+            dayRecord.id = id
+            dayRecord.records = records
+            dayRecord.createdAt = createdAt
+            dayRecord.updatedAt = updatedAt
+            return dayRecord
+        } catch {
+            print("反序列化records失败: \(error)")
+            return nil
+        }
     }
 }
 

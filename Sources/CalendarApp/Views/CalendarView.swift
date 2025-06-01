@@ -15,6 +15,7 @@ struct CalendarView: View {
     // 状态变量，用于触发视图刷新
     @State private var refreshID = UUID()
     @State private var showingSettings = false
+    @State private var showingDetail = false  // 是否显示日详情视图
     
     var body: some View {
         ZStack {
@@ -190,9 +191,9 @@ struct CalendarView: View {
     // MARK: - 日历网格
     private var calendarGridView: some View {
         let days = calendarModel.getDaysInMonth()
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 7)
         
-        return LazyVGrid(columns: columns, spacing: 8) {
+        return LazyVGrid(columns: columns, spacing: 10) {
             ForEach(days, id: \.self) { date in
                 DayCell(
                     date: date,
@@ -243,36 +244,106 @@ struct DayCell: View {
             onTap()
         }) {
             VStack(spacing: 2) {
-                // 公历日期
-                Text("\(date.day)")
-                    .font(.system(size: 20, weight: isToday ? .bold : .medium))
-                    .foregroundColor(textColor)
-                    .padding(.top, 4)
+                // 顶部日期栏
+                HStack {
+                    Text("\(date.day)")
+                        .font(.system(size: 20, weight: isToday ? .bold : .medium))
+                        .foregroundColor(textColor)
+                        .padding(.top, 4)
+                        .padding(.leading, 6)
+                    
+                    Spacer()
+                    
+                    // 显示记录数量和标记
+                    if hasRecord {
+                        HStack(spacing: 4) {
+                            // 记录数量
+                            let count = recordManager.recordCount(for: date)
+                            if count > 1 {
+                                Text("\(count)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 16, height: 16)
+                                    .background(Color.orange.opacity(0.8))
+                                    .clipShape(Circle())
+                            } else {
+                                Circle()
+                                    .fill(Color.blue.opacity(0.7))
+                                    .frame(width: 8, height: 8)
+                            }
+                        }
+                        .padding(.top, 4)
+                        .padding(.trailing, 6)
+                    }
+                }
                 
                 // 记录内容预览
                 if hasRecord {
-                    Text(contentPreview)
-                        .font(.system(size: 9))
-                        .foregroundColor(contentTextColor)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 2)
-                        .frame(maxHeight: .infinity)
+                    recordsContentView
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
                 } else {
                     Spacer()
                 }
             }
-            .frame(height: 70)
+            .frame(height: 90)
             .frame(maxWidth: .infinity)
             .background(backgroundColor)
-            .cornerRadius(10)
+            .cornerRadius(12)
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(borderColor, lineWidth: isToday ? 2 : 0)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(borderColor, lineWidth: isToday ? 2 : hasRecord ? 1 : 0)
             )
         }
         .buttonStyle(PlainButtonStyle())
         .help(hasRecord ? contentPreview : "点击添加记录")
+    }
+    
+    // 多条记录内容视图 - 简化为纯展示
+    private var recordsContentView: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            let records = recordManager.getRecords(for: date)
+            let displayRecords = Array(records.prefix(3)) // 最多显示3条记录
+            
+            ForEach(displayRecords.indices, id: \.self) { index in
+                let record = displayRecords[index]
+                let firstLine = record.content.split(separator: "\n").first ?? ""
+                
+                // 每条记录的展示区域
+                HStack(spacing: 2) {
+                    // 记录标记
+                    Rectangle()
+                        .fill(recordColor(index: index))
+                        .frame(width: 2)
+                    
+                    // 记录内容第一行
+                    Text(String(firstLine))
+                        .font(.system(size: 10))
+                        .foregroundColor(contentTextColor)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.vertical, 1)
+            }
+            
+            // 如果还有更多记录，显示省略号
+            if records.count > 3 {
+                Text("还有 \(records.count - 3) 条记录...")
+                    .font(.system(size: 9))
+                    .foregroundColor(contentTextColor.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 1)
+            }
+            
+            Spacer()
+        }
+        .frame(maxHeight: .infinity)
+    }
+    
+    // 根据记录索引返回不同颜色
+    private func recordColor(index: Int) -> Color {
+        let colors: [Color] = [.blue, .green, .orange, .purple, .red]
+        return colors[index % colors.count]
     }
     
     // MARK: - 计算属性
@@ -323,17 +394,20 @@ struct DayCell: View {
     
     // 获取内容预览
     private var contentPreview: String {
-        guard let record = recordManager.getRecord(for: date) else {
+        let records = recordManager.getRecords(for: date)
+        if records.isEmpty {
             return ""
         }
         
-        // 限制预览长度
-        let content = record.content
-        if content.count > 30 {
-            let index = content.index(content.startIndex, offsetBy: 30)
-            return String(content[..<index]) + "..."
+        let count = records.count
+        let firstRecord = records.first?.content ?? ""
+        let preview = String(firstRecord.prefix(30))
+        
+        if count == 1 {
+            return firstRecord.count > 30 ? preview + "..." : preview
+        } else {
+            return "\(count)条记录: " + (firstRecord.count > 20 ? String(firstRecord.prefix(20)) + "..." : preview)
         }
-        return content
     }
 }
 

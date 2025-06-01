@@ -132,8 +132,10 @@ class SimpleNoteEditor: NSObject {
     private func loadContent(for date: Date) {
         guard let textView = self.textView else { return }
         
-        if let record = recordManager.getRecord(for: date) {
-            textView.string = record.content
+        if let dayRecord = recordManager.getRecord(for: date) {
+            // 将所有记录的内容合并显示
+            let allContent = dayRecord.records.map { $0.content }.joined(separator: "\n\n")
+            textView.string = allContent
         } else {
             textView.string = ""
         }
