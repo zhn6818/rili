@@ -1,0 +1,23 @@
+# Xcode
+.build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+
+# Swift Package Manager
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# 临时文件和数据
+tmp/
+*.log
+
+# 编辑器相关
+.vscode/
+.idea/
+*.swp
+*.swo
+*~ 
