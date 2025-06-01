@@ -23,6 +23,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 设置应用为常规应用（不是只有菜单栏的应用）
         NSApp.setActivationPolicy(.regular)
+        
+        // 检查是否为签名应用
+        if isSignedApp() {
+            print("检测到签名应用，初始化CloudKit...")
+            // 延迟初始化CloudKit，确保在应用完全启动后进行
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                CloudKitManager.shared.setupCloudKit()
+            }
+        }
     }
     
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -33,5 +42,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return true
+    }
+    
+    // 检查应用是否已签名
+    private func isSignedApp() -> Bool {
+        // 如果是从app bundle运行，而不是直接通过swift run，则认为是签名应用
+        let bundlePath = Bundle.main.bundlePath
+        return bundlePath.hasSuffix(".app") || bundlePath.contains("/Applications/")
     }
 } 

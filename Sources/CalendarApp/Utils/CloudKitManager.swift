@@ -25,18 +25,19 @@ class CloudKitManager: ObservableObject {
     private let recordType = "DayRecord"
     
     private init() {
-        // 安全地尝试初始化CloudKit
-        setupCloudKit()
+        // 在开发环境下，我们可能无法使用CloudKit
+        // 所以将isAvailable设为false
+        isAvailable = false
+        syncError = "需要通过签名应用使用iCloud"
+        print("在开发环境中，CloudKit功能不可用。请使用sign_app.sh脚本签名应用后运行。")
     }
     
     /**
-     * 设置CloudKit
+     * 设置CloudKit - 在签名的应用中调用此方法
      */
-    private func setupCloudKit() {
-        // 在开发环境中，我们可能没有正确的容器ID
-        // 所以使用try-catch来捕获错误
+    func setupCloudKit() {
+        // 仅在签名的应用中调用
         do {
-            // 使用与用户账号关联的容器ID
             container = CKContainer(identifier: "iCloud.com.zhn6818.CalendarApp")
             privateDatabase = container?.privateCloudDatabase
             isAvailable = true
@@ -46,10 +47,12 @@ class CloudKitManager: ObservableObject {
             
             // 创建自定义zone
             createZoneIfNeeded()
+            
+            print("CloudKit已成功初始化")
         } catch {
             print("CloudKit初始化失败: \(error)")
             isAvailable = false
-            syncError = "CloudKit不可用"
+            syncError = "CloudKit服务不可用"
         }
     }
     
